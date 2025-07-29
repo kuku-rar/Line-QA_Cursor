@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <title>健康問卷填寫</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .radio-group label {
+            display: inline-block;
+            margin-right: 16px;
+        }
+
+        button {
+            padding: 8px 24px;
+            font-size: 16px;
+        }
+
+        .success {
+            color: green;
+        }
+
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>健康問卷填寫</h2>
+    <form id="surveyForm">
+        <div class="form-group">
+            <label>1. 是否有喝水500cc</label>
+            <div class="radio-group">
+                <label><input type="radio" name="q1" value="V"> V</label>
+                <label><input type="radio" name="q1" value="X"> X</label>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>2. 是否有吃藥</label>
+            <div class="radio-group">
+                <label><input type="radio" name="q2" value="V"> V</label>
+                <label><input type="radio" name="q2" value="X"> X</label>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>3. 是否有拉筋</label>
+            <div class="radio-group">
+                <label><input type="radio" name="q3" value="V"> V</label>
+                <label><input type="radio" name="q3" value="X"> X</label>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>4. 是否有超慢跑</label>
+            <div class="radio-group">
+                <label><input type="radio" name="q4" value="V"> V</label>
+                <label><input type="radio" name="q4" value="X"> X</label>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>有沒有什麼想跟護理師說的話（限20字）</label>
+            <input type="text" name="remark" maxlength="20" style="width: 100%;">
+        </div>
+        <button type="submit">送出</button>
+    </form>
+    <div id="msg"></div>
+
+    <script>
+        let userLineId = null;
+
+        function getCurrentSlot() {
+            const now = new Date();
+            const hour = now.getHours();
+            if (hour < 13) return "10:00";
+            if (hour < 17) return "13:00";
+            return "17:00";
+        }
+
+        async function initLiff() {
+            await liff.init({ liffId: "YOUR_LIFF_ID" }); // 請填入你的 LIFF ID
+            if (!liff.isLoggedIn()) {
+                liff.login();
+                return;
+            }
+            const profile = await liff.getProfile();
+            userLineId = profile.userId;
+        }
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            await initLiff();
+
+            document.getElementById("surveyForm").addEventListener("submit", async function (e) {
+                e.preventDefault();
+                const form = e.target;
+                const data = {
+                    lineId: userLineId,
+                    slot: getCurrentSlot(),
+                    q1: form.q1.value || null,
+                    q2: form.q2.value || null,
+                    q3: form.q3.value || null,
+                    q4: form.q4.value || null,
+                    remark: form.remark.value || null
+                };
+
+                try {
+                    const res = await fetch("/api/survey/submit", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(data)
+                    });
+                    const result = await res.json();
+                    if (result.success) {
+                        document.getElementById("msg").innerHTML = '<div class="success">填寫成功！</div>';
+                    } else {
+                        document.getElementById("msg").innerHTML = '<div class="error">填寫失敗：' + (result.error || '') + '</div>';
+                    }
+                } catch (err) {
+                    document.getElementById("msg").innerHTML = '<div class="error">系統錯誤，請稍後再試。</div>';
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
