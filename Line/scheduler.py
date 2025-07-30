@@ -2,16 +2,17 @@ import pymysql
 import requests
 from apscheduler.schedulers.blocking import BlockingScheduler
 from datetime import datetime
+import os
 
 DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'survey_user',
-    'password': 'P@ssw0rd',
-    'database': 'line_survey_db',
+    'host': os.environ.get('DB_HOST', 'localhost'),
+    'user': os.environ.get('DB_USER', 'survey_user'),
+    'password': os.environ.get('DB_PASSWORD', 'P@ssw0rd'),
+    'database': os.environ.get('DB_DATABASE', 'line_survey_db'),
     'charset': 'utf8mb4'
 }
 
-LINE_CHANNEL_ACCESS_TOKEN = 'HVmEY/uPF+fahkzZYmPxA3c82yhwHy9SchF748yA2XWfO7Hj82Qq6qWj0kQSNziJCDDwVgVG5pnSZsnAwYIh0MFBvQ3oU2LktL0djXH51k0e+bud9uEUZyhdQ/w8uCDbDEay9DbIDeKpLGIznhGqBQdB04t89/1O/w1cDnyilFU='
+LINE_CHANNEL_ACCESS_TOKEN = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN', 'HVmEY/uPF+fahkzZYmPxA3c82yhwHy9SchF748yA2XWfO7Hj82Qq6qWj0kQSNziJCDDwVgVG5pnSZsnAwYIh0MFBvQ3oU2LktL0djXH51k0e+bud9uEUZyhdQ/w8uCDbDEay9DbIDeKpLGIznhGqBQdB04t89/1O/w1cDnyilFU=')
 LINE_API_URL = 'https://api.line.me/v2/bot/message/push'
 
 # 預建問卷

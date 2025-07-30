@@ -1,14 +1,15 @@
 from flask import Flask, request, jsonify, send_from_directory
 import pymysql
 from datetime import datetime
+import os
 
 app = Flask(__name__)
 
 DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'survey_user',
-    'password': 'P@ssw0rd',
-    'database': 'line_survey_db',
+    'host': os.environ.get('DB_HOST', 'localhost'),
+    'user': os.environ.get('DB_USER', 'survey_user'),
+    'password': os.environ.get('DB_PASSWORD', 'P@ssw0rd'),
+    'database': os.environ.get('DB_DATABASE', 'line_survey_db'),
     'charset': 'utf8mb4'
 }
 
