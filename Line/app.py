@@ -6,7 +6,7 @@ import os
 app = Flask(__name__)
 
 DB_CONFIG = {
-    'host': os.environ.get('DB_HOST', 'tpe1.clusters.zeabur.com'),
+    'host': os.environ.get('DB_HOST', 'mysql.zeabur.internal'),
     'user': os.environ.get('DB_USER', 'root'),
     'password': os.environ.get('DB_PASSWORD', 'JdTHR3vX816u2kU4WmtVZCi90p5rqY7a'),
     'database': os.environ.get('DB_DATABASE', 'zeabur'),
