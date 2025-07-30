@@ -7,78 +7,357 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
+            font-family: "Microsoft JhengHei", "PingFang TC", "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .form-container {
+            padding: 30px 20px;
         }
 
         .form-group {
-            margin-bottom: 16px;
+            margin-bottom: 30px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid #e9ecef;
         }
 
-        label {
+        .form-group:hover {
+            border-color: #4CAF50;
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.2);
+        }
+
+        .question-label {
             display: block;
-            margin-bottom: 4px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            line-height: 1.4;
         }
 
-        .radio-group label {
-            display: inline-block;
-            margin-right: 16px;
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
         }
 
-        button {
-            padding: 8px 24px;
-            font-size: 16px;
+        .radio-option {
+            position: relative;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .radio-option input[type="radio"] {
+            display: none;
+        }
+
+        .radio-option label {
+            display: block;
+            padding: 20px 15px;
+            background: white;
+            border: 3px solid #ddd;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .radio-option input[type="radio"]:checked+label {
+            background: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .radio-option label:hover {
+            border-color: #4CAF50;
+            transform: scale(1.02);
+        }
+
+        .text-input-group {
+            margin-bottom: 30px;
+        }
+
+        .text-input-group label {
+            display: block;
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+
+        .text-input {
+            width: 100%;
+            padding: 20px;
+            font-size: 18px;
+            border: 3px solid #ddd;
+            border-radius: 12px;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .text-input:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 25px;
+            font-size: 22px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.4);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 18px;
+            text-align: center;
+            font-weight: bold;
         }
 
         .success {
-            color: green;
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
         }
 
         .error {
-            color: red;
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        .loading {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 2px solid #bee5eb;
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .question-label {
+                font-size: 18px;
+            }
+
+            .radio-option label {
+                font-size: 20px;
+                padding: 15px 10px;
+                min-height: 70px;
+            }
+
+            .submit-btn {
+                font-size: 20px;
+                padding: 20px;
+            }
+
+            .form-container {
+                padding: 20px 15px;
+            }
+
+            .form-group {
+                padding: 15px;
+                margin-bottom: 20px;
+            }
+        }
+
+        /* 動畫效果 */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .form-group {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .form-group:nth-child(1) {
+            animation-delay: 0.1s;
+        }
+
+        .form-group:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .form-group:nth-child(3) {
+            animation-delay: 0.3s;
+        }
+
+        .form-group:nth-child(4) {
+            animation-delay: 0.4s;
+        }
+
+        .form-group:nth-child(5) {
+            animation-delay: 0.5s;
         }
     </style>
 </head>
 
 <body>
-    <h2>健康問卷填寫</h2>
-    <form id="surveyForm">
-        <div class="form-group">
-            <label>1. 是否有喝水500cc</label>
-            <div class="radio-group">
-                <label><input type="radio" name="q1" value="V"> V</label>
-                <label><input type="radio" name="q1" value="X"> X</label>
-            </div>
+    <div class="container">
+        <div class="header">
+            <h1>健康問卷填寫</h1>
+            <p>請協助填寫今日健康狀況</p>
         </div>
-        <div class="form-group">
-            <label>2. 是否有吃藥</label>
-            <div class="radio-group">
-                <label><input type="radio" name="q2" value="V"> V</label>
-                <label><input type="radio" name="q2" value="X"> X</label>
-            </div>
+
+        <div class="form-container">
+            <form id="surveyForm">
+                <div class="form-group">
+                    <label class="question-label">1. 是否有喝水500cc</label>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" name="q1" value="V" id="q1_v">
+                            <label for="q1_v">✓ 有</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" name="q1" value="X" id="q1_x">
+                            <label for="q1_x">✗ 沒有</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="question-label">2. 是否有吃藥</label>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" name="q2" value="V" id="q2_v">
+                            <label for="q2_v">✓ 有</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" name="q2" value="X" id="q2_x">
+                            <label for="q2_x">✗ 沒有</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="question-label">3. 是否有拉筋</label>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" name="q3" value="V" id="q3_v">
+                            <label for="q3_v">✓ 有</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" name="q3" value="X" id="q3_x">
+                            <label for="q3_x">✗ 沒有</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="question-label">4. 是否有超慢跑</label>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" name="q4" value="V" id="q4_v">
+                            <label for="q4_v">✓ 有</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" name="q4" value="X" id="q4_x">
+                            <label for="q4_x">✗ 沒有</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-input-group">
+                    <label class="question-label">有沒有什麼想跟護理師說的話（限20字）</label>
+                    <input type="text" name="remark" maxlength="20" class="text-input" placeholder="請輸入您的留言...">
+                </div>
+
+                <button type="submit" class="submit-btn" id="submitBtn">送出問卷</button>
+            </form>
+
+            <div id="msg"></div>
         </div>
-        <div class="form-group">
-            <label>3. 是否有拉筋</label>
-            <div class="radio-group">
-                <label><input type="radio" name="q3" value="V"> V</label>
-                <label><input type="radio" name="q3" value="X"> X</label>
-            </div>
-        </div>
-        <div class="form-group">
-            <label>4. 是否有超慢跑</label>
-            <div class="radio-group">
-                <label><input type="radio" name="q4" value="V"> V</label>
-                <label><input type="radio" name="q4" value="X"> X</label>
-            </div>
-        </div>
-        <div class="form-group">
-            <label>有沒有什麼想跟護理師說的話（限20字）</label>
-            <input type="text" name="remark" maxlength="20" style="width: 100%;">
-        </div>
-        <button type="submit">送出</button>
-    </form>
-    <div id="msg"></div>
+    </div>
 
     <script>
         let userLineId = null;
@@ -92,13 +371,40 @@
         }
 
         async function initLiff() {
-            await liff.init({ liffId: "YOUR_LIFF_ID" }); // 請填入你的 LIFF ID
-            if (!liff.isLoggedIn()) {
-                liff.login();
-                return;
+            try {
+                await liff.init({ liffId: "YOUR_LIFF_ID" }); // 請填入你的 LIFF ID
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                    return;
+                }
+                const profile = await liff.getProfile();
+                userLineId = profile.userId;
+            } catch (error) {
+                console.error('LIFF 初始化失敗:', error);
             }
-            const profile = await liff.getProfile();
-            userLineId = profile.userId;
+        }
+
+        function showMessage(message, type) {
+            const msgDiv = document.getElementById("msg");
+            msgDiv.innerHTML = `<div class="message ${type}">${message}</div>`;
+
+            if (type === 'success') {
+                setTimeout(() => {
+                    msgDiv.innerHTML = '';
+                }, 3000);
+            }
+        }
+
+        function setLoading(loading) {
+            const submitBtn = document.getElementById("submitBtn");
+            if (loading) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = "送出中...";
+                showMessage("正在送出問卷，請稍候...", "loading");
+            } else {
+                submitBtn.disabled = false;
+                submitBtn.textContent = "送出問卷";
+            }
         }
 
         document.addEventListener("DOMContentLoaded", async () => {
@@ -106,6 +412,7 @@
 
             document.getElementById("surveyForm").addEventListener("submit", async function (e) {
                 e.preventDefault();
+
                 const form = e.target;
                 const data = {
                     lineId: userLineId,
@@ -117,20 +424,43 @@
                     remark: form.remark.value || null
                 };
 
+                // 檢查是否所有問題都已回答
+                if (!data.q1 || !data.q2 || !data.q3 || !data.q4) {
+                    showMessage("請回答所有問題後再送出", "error");
+                    return;
+                }
+
+                setLoading(true);
+
                 try {
                     const res = await fetch("/api/survey/submit", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify(data)
                     });
+
                     const result = await res.json();
+
                     if (result.success) {
-                        document.getElementById("msg").innerHTML = '<div class="success">填寫成功！</div>';
+                        showMessage("✓ 問卷填寫成功！感謝您的配合", "success");
+                        form.reset();
                     } else {
-                        document.getElementById("msg").innerHTML = '<div class="error">填寫失敗：' + (result.error || '') + '</div>';
+                        showMessage("✗ 填寫失敗：" + (result.error || '請稍後再試'), "error");
                     }
                 } catch (err) {
-                    document.getElementById("msg").innerHTML = '<div class="error">系統錯誤，請稍後再試。</div>';
+                    console.error('送出失敗:', err);
+                    showMessage("✗ 系統錯誤，請檢查網路連線後再試", "error");
+                } finally {
+                    setLoading(false);
+                }
+            });
+
+            // 為文字輸入框添加字數提示
+            const remarkInput = document.querySelector('input[name="remark"]');
+            remarkInput.addEventListener('input', function () {
+                const remaining = 20 - this.value.length;
+                if (remaining < 0) {
+                    this.value = this.value.substring(0, 20);
                 }
             });
         });
