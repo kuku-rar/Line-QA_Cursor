@@ -132,5 +132,42 @@ def submit_survey():
         if 'conn' in locals():
             conn.close()
 
+@app.route('/api/user/sync', methods=['POST'])
+def user_sync():
+    data = request.get_json()
+    lineId = data.get('lineId')
+    name = data.get('name')
+    if not lineId or not name:
+        return jsonify({'success': False, 'error': '缺少 lineId 或 name'}), 400
+    try:
+        conn = pymysql.connect(**DB_CONFIG)
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT lineId, name, gender, birthday, age FROM users WHERE lineId=%s", (lineId,))
+            user = cursor.fetchone()
+            if not user:
+                # 新用戶，僅存 lineId, name, is_active=1
+                cursor.execute("INSERT INTO users (lineId, name, is_active, created_at, updated_at) VALUES (%s, %s, 1, NOW(), NOW())", (lineId, name))
+                conn.commit()
+                return jsonify({'success': True, 'status': 'new'})
+            else:
+                # 已存在，若 name 有變則自動更新
+                if user[1] != name:
+                    cursor.execute("UPDATE users SET name=%s, updated_at=NOW() WHERE lineId=%s", (name, lineId))
+                    conn.commit()
+                # 回傳完整資料
+                user_dict = {
+                    'lineId': user[0],
+                    'name': user[1],
+                    'gender': user[2],
+                    'birthday': user[3],
+                    'age': user[4]
+                }
+                return jsonify({'success': True, 'status': 'exist', 'user': user_dict})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
 if __name__ == "__main__":
     app.run(debug=True) 
