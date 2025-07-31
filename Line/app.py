@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, send_from_directory
 import pymysql
 from datetime import date, datetime
 import os
+import time # 引入 time 模組用於等待
 
 app = Flask(__name__)
 
@@ -20,81 +21,105 @@ def get_db_connection():
     return pymysql.connect(**DB_CONFIG)
 
 def init_database():
-    """初始化資料庫和表結構，並安全地新增欄位"""
-    conn = None
-    try:
-        db_name = DB_CONFIG['database']
-        # 先連線到 MySQL，不指定特定資料庫
-        temp_config = DB_CONFIG.copy()
-        temp_config.pop('database')
-        temp_config.pop('cursorclass')
-        conn = pymysql.connect(**temp_config)
+    """初始化資料庫和表結構，並加入重試機制以應對啟動延遲"""
+    max_retries = 5
+    retry_delay = 5  # seconds
 
-        with conn.cursor() as cursor:
-            cursor.execute(f"CREATE DATABASE IF NOT EXISTS `{db_name}` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
-            cursor.execute(f"USE `{db_name}`")
+    for attempt in range(max_retries):
+        conn = None
+        try:
+            print(f"🚀 [嘗試 {attempt + 1}/{max_retries}] 連線到資料庫...")
+            
+            db_name = DB_CONFIG['database']
+            # 建立連線時先不指定資料庫，以確保 CREATE DATABASE 能成功
+            temp_config = DB_CONFIG.copy()
+            temp_config.pop('database')
+            temp_config.pop('cursorclass', None) # 執行 DDL 時不使用 DictCursor
+            conn = pymysql.connect(**temp_config)
 
-            # 建立 users 表 (如果不存在)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS users (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    lineId VARCHAR(255) UNIQUE NOT NULL,
-                    name VARCHAR(255) NOT NULL,
-                    gender ENUM('male', 'female', 'other') NULL,
-                    age INT NULL,
-                    is_active BOOLEAN DEFAULT TRUE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    INDEX idx_lineId (lineId)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-            """)
+            with conn.cursor() as cursor:
+                print("✅ 資料庫連線成功，開始檢查/更新結構...")
+                cursor.execute(f"CREATE DATABASE IF NOT EXISTS `{db_name}` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+                cursor.execute(f"USE `{db_name}`")
 
-            # **【關鍵修正】** 檢查並安全地新增 birthday 欄位
-            cursor.execute("""
-                SELECT COUNT(*) as count
-                FROM information_schema.COLUMNS
-                WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'users' AND COLUMN_NAME = 'birthday'
-            """, (db_name,))
-            if cursor.fetchone()['count'] == 0:
-                print("⚠️ 'users' 表中缺少 'birthday' 欄位，正在新增...")
-                cursor.execute("ALTER TABLE users ADD COLUMN birthday DATE NULL AFTER gender;")
-                print("✅ 'birthday' 欄位新增完成")
+                # 建立 users 表
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS users (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        lineId VARCHAR(255) UNIQUE NOT NULL,
+                        name VARCHAR(255) NOT NULL,
+                        gender ENUM('male', 'female', 'other') NULL,
+                        age INT NULL,
+                        is_active BOOLEAN DEFAULT TRUE,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        INDEX idx_lineId (lineId)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                """)
 
-            # 建立 surveys 表 (如果不存在)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS surveys (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    user_id INT NOT NULL,
-                    survey_date DATE NOT NULL,
-                    slot ENUM('10:00', '13:00', '17:00') NOT NULL,
-                    q1 ENUM('V', 'X') NULL,
-                    q2 ENUM('V', 'X') NULL,
-                    q3 ENUM('V', 'X') NULL,
-                    q4 ENUM('V', 'X') NULL,
-                    remark TEXT NULL,
-                    submitted_at TIMESTAMP NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    UNIQUE KEY unique_survey (user_id, survey_date, slot),
-                    INDEX idx_date_slot (survey_date, slot),
-                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-            """)
-        conn.commit()
-        print("✅ 資料庫結構初始化/驗證完成")
-    except Exception as e:
-        print(f"❌ 資料庫初始化失敗: {e}")
-        raise e
-    finally:
-        if conn and conn.open:
-            conn.close()
+                # 檢查並安全地新增 birthday 欄位
+                # 使用 DictCursor 來檢查，所以需要重新取得 cursor
+                with conn.cursor(pymysql.cursors.DictCursor) as dict_cursor:
+                    dict_cursor.execute("""
+                        SELECT COUNT(*) as count
+                        FROM information_schema.COLUMNS
+                        WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'users' AND COLUMN_NAME = 'birthday'
+                    """, (db_name,))
+                    if dict_cursor.fetchone()['count'] == 0:
+                        print("⚠️ 'users' 表中缺少 'birthday' 欄位，正在新增...")
+                        # 新增欄位時用回普通 cursor
+                        cursor.execute("ALTER TABLE users ADD COLUMN birthday DATE NULL AFTER gender;")
+                        print("✅ 'birthday' 欄位新增完成")
 
-# 在應用程式啟動時執行資料庫初始化
+                # 建立 surveys 表
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS surveys (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        user_id INT NOT NULL,
+                        survey_date DATE NOT NULL,
+                        slot ENUM('10:00', '13:00', '17:00') NOT NULL,
+                        q1 ENUM('V', 'X') NULL,
+                        q2 ENUM('V', 'X') NULL,
+                        q3 ENUM('V', 'X') NULL,
+                        q4 ENUM('V', 'X') NULL,
+                        remark TEXT NULL,
+                        submitted_at TIMESTAMP NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        UNIQUE KEY unique_survey (user_id, survey_date, slot),
+                        INDEX idx_date_slot (survey_date, slot),
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                """)
+            
+            conn.commit()
+            print("✅ 資料庫結構初始化/驗證完成。")
+            return  # 成功後退出函式和迴圈
+
+        except pymysql.err.OperationalError as e:
+            print(f"⚠️ 資料庫連線操作失敗: {e}")
+            if attempt + 1 == max_retries:
+                print("❌ 已達最大重試次數，放棄初始化。")
+                raise e
+            print(f"   將在 {retry_delay} 秒後重試...")
+            time.sleep(retry_delay)
+        
+        except Exception as e:
+            print(f"❌ 資料庫初始化時發生未預期的錯誤: {e}")
+            raise e
+        
+        finally:
+            if conn and conn.open:
+                conn.close()
+
+# 如果所有重試都失敗，Gunicorn 會因為未處理的例外而正確地知道啟動失敗
 init_database()
 
 @app.route('/survey')
 def survey_page():
     return send_from_directory('.', 'survey.html')
+
+# --- 以下的 API 端點維持不變 ---
 
 @app.route('/api/user/sync', methods=['POST'])
 def sync_user():
@@ -126,7 +151,6 @@ def sync_user():
             
             conn.commit()
 
-            # **【關鍵修正】** SELECT 查詢中也加入 birthday
             cursor.execute("SELECT lineId, name, gender, birthday, age FROM users WHERE id = %s", (user_id,))
             user_profile = cursor.fetchone()
 
@@ -162,7 +186,6 @@ def submit_survey():
                 return jsonify({'success': False, 'error': 'User not found. Please sync first.'}), 404
             user_id = user['id']
 
-            # **【關鍵修正】** 如果是註冊流程，則更新使用者基本資料
             if 'gender' in data and 'age' in data and 'birthday' in data:
                 cursor.execute("""
                     UPDATE users SET
@@ -172,7 +195,6 @@ def submit_survey():
                     WHERE id = %s
                 """, (data.get('gender'), data.get('age'), data.get('birthday'), user_id))
 
-            # 更新問卷答案
             sql_update = """
                 UPDATE surveys
                 SET q1=%s, q2=%s, q3=%s, q4=%s, remark=%s, submitted_at=%s
