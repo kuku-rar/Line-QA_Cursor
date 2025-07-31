@@ -53,17 +53,12 @@
             font-weight: normal;
         }
 
-        .header p {
-            font-size: 16px;
-            opacity: 0.9;
-        }
-
         .form-container {
             padding: 30px 20px;
         }
 
         .form-group {
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             background: #f8f9fa;
             border-radius: 15px;
             padding: 20px;
@@ -72,24 +67,23 @@
 
         .question-label {
             display: block;
-            font-size: 20px;
+            font-size: 18px;
             font-weight: bold;
             color: #2c3e50;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             line-height: 1.4;
         }
 
         .radio-group {
             display: flex;
-            gap: 20px;
+            gap: 15px;
             justify-content: center;
-            flex-wrap: wrap;
         }
 
         .radio-option {
             position: relative;
             flex: 1;
-            min-width: 120px;
+            min-width: 100px;
         }
 
         .radio-option input[type="radio"] {
@@ -97,21 +91,20 @@
         }
 
         .radio-option label {
-            display: block;
-            padding: 20px 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px 10px;
             background: white;
             border: 3px solid #ddd;
             border-radius: 12px;
             text-align: center;
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
             color: #666;
             cursor: pointer;
             transition: all 0.3s ease;
-            min-height: 80px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            min-height: 70px;
         }
 
         .radio-option input[type="radio"]:checked+label {
@@ -169,7 +162,6 @@
             text-align: center;
             font-weight: bold;
             display: none;
-            /* 預設隱藏 */
         }
 
         .success {
@@ -184,12 +176,6 @@
             border: 1px solid #f5c6cb;
         }
 
-        .loading {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-
         #loader {
             text-align: center;
             padding: 50px;
@@ -197,7 +183,6 @@
             color: #fff;
         }
 
-        /* 動畫效果 */
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -229,7 +214,6 @@
 
         <div class="form-container">
             <form id="surveyForm">
-                <!-- 註冊欄位，預設隱藏 -->
                 <div id="registrationFields" style="display:none;">
                     <div class="form-group">
                         <label class="question-label">您的姓名</label>
@@ -245,74 +229,59 @@
                         </select>
                     </div>
                     <div class="form-group">
+                        <label class="question-label">您的生日</label>
+                        <input type="date" name="birthday" class="text-input" required>
+                    </div>
+                    <div class="form-group">
                         <label class="question-label">您的年齡</label>
-                        <input type="number" name="age" class="text-input" placeholder="請輸入您的年齡" required>
+                        <input type="number" name="age" id="ageInput" class="text-input" placeholder="選擇生日後將自動計算"
+                            readonly required>
                     </div>
                 </div>
 
                 <!-- 問卷問題 -->
-                <div class="form-group">
-                    <label class="question-label">1. 是否有喝水500cc</label>
+                <div class="form-group"><label class="question-label">1. 是否有喝水500cc</label>
                     <div class="radio-group">
-                        <div class="radio-option">
-                            <input type="radio" name="q1" value="V" id="q1_v" required><label for="q1_v">✓ 有</label>
-                        </div>
-                        <div class="radio-option">
-                            <input type="radio" name="q1" value="X" id="q1_x"><label for="q1_x">✗ 沒有</label>
-                        </div>
+                        <div class="radio-option"><input type="radio" name="q1" value="V" id="q1_v" required><label
+                                for="q1_v">✓ 有</label></div>
+                        <div class="radio-option"><input type="radio" name="q1" value="X" id="q1_x"><label for="q1_x">✗
+                                沒有</label></div>
                     </div>
                 </div>
-
-                <div class="form-group">
-                    <label class="question-label">2. 是否有吃藥</label>
+                <div class="form-group"><label class="question-label">2. 是否有吃藥</label>
                     <div class="radio-group">
-                        <div class="radio-option">
-                            <input type="radio" name="q2" value="V" id="q2_v" required><label for="q2_v">✓ 有</label>
-                        </div>
-                        <div class="radio-option">
-                            <input type="radio" name="q2" value="X" id="q2_x"><label for="q2_x">✗ 沒有</label>
-                        </div>
+                        <div class="radio-option"><input type="radio" name="q2" value="V" id="q2_v" required><label
+                                for="q2_v">✓ 有</label></div>
+                        <div class="radio-option"><input type="radio" name="q2" value="X" id="q2_x"><label for="q2_x">✗
+                                沒有</label></div>
                     </div>
                 </div>
-
-                <div class="form-group">
-                    <label class="question-label">3. 是否有拉筋</label>
+                <div class="form-group"><label class="question-label">3. 是否有拉筋</label>
                     <div class="radio-group">
-                        <div class="radio-option">
-                            <input type="radio" name="q3" value="V" id="q3_v" required><label for="q3_v">✓ 有</label>
-                        </div>
-                        <div class="radio-option">
-                            <input type="radio" name="q3" value="X" id="q3_x"><label for="q3_x">✗ 沒有</label>
-                        </div>
+                        <div class="radio-option"><input type="radio" name="q3" value="V" id="q3_v" required><label
+                                for="q3_v">✓ 有</label></div>
+                        <div class="radio-option"><input type="radio" name="q3" value="X" id="q3_x"><label for="q3_x">✗
+                                沒有</label></div>
                     </div>
                 </div>
-
-                <div class="form-group">
-                    <label class="question-label">4. 是否有超慢跑</label>
+                <div class="form-group"><label class="question-label">4. 是否有超慢跑</label>
                     <div class="radio-group">
-                        <div class="radio-option">
-                            <input type="radio" name="q4" value="V" id="q4_v" required><label for="q4_v">✓ 有</label>
-                        </div>
-                        <div class="radio-option">
-                            <input type="radio" name="q4" value="X" id="q4_x"><label for="q4_x">✗ 沒有</label>
-                        </div>
+                        <div class="radio-option"><input type="radio" name="q4" value="V" id="q4_v" required><label
+                                for="q4_v">✓ 有</label></div>
+                        <div class="radio-option"><input type="radio" name="q4" value="X" id="q4_x"><label for="q4_x">✗
+                                沒有</label></div>
                     </div>
                 </div>
-
-                <div class="form-group">
-                    <label class="question-label">有沒有什麼想跟護理師說的話 (選填)</label>
-                    <input type="text" name="remark" maxlength="50" class="text-input" placeholder="請輸入您的留言...">
-                </div>
+                <div class="form-group"><label class="question-label">有沒有什麼想跟護理師說的話 (選填)</label><input type="text"
+                        name="remark" maxlength="50" class="text-input" placeholder="請輸入您的留言..."></div>
 
                 <button type="submit" class="submit-btn" id="submitBtn">送出</button>
             </form>
-
             <div id="msg" class="message"></div>
         </div>
     </div>
 
     <script>
-        // --- DOM Elements ---
         const loader = document.getElementById('loader');
         const mainContainer = document.getElementById('mainContainer');
         const surveyForm = document.getElementById('surveyForm');
@@ -322,17 +291,8 @@
         const msgDiv = document.getElementById('msg');
         const submitBtn = document.getElementById('submitBtn');
 
-        // --- LIFF & User Data ---
-        const MY_LIFF_ID = "2007753950-9NB7ymbm"; // 您的 LIFF ID
+        const MY_LIFF_ID = "2007753950-9NB7ymbm";
         let userProfile = null;
-
-        // --- Functions ---
-        function getCurrentSlot() {
-            const hour = new Date().getHours();
-            if (hour < 13) return "10:00";
-            if (hour < 17) return "13:00";
-            return "17:00";
-        }
 
         function showMessage(message, type) {
             msgDiv.textContent = message;
@@ -353,7 +313,7 @@
                     return;
                 }
                 const profile = await liff.getProfile();
-                syncUser(profile);
+                await syncUser(profile);
             } catch (error) {
                 console.error('LIFF Initialization failed:', error);
                 loader.textContent = 'LIFF 初始化失敗，請確認您在 LINE App 中開啟此頁面。';
@@ -365,16 +325,12 @@
                 const response = await fetch("/api/user/sync", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        lineId: profile.userId,
-                        name: profile.displayName
-                    })
+                    body: JSON.stringify({ lineId: profile.userId, name: profile.displayName })
                 });
+                if (!response.ok) throw new Error(`伺服器回應錯誤: ${response.status}`);
                 const result = await response.json();
-
                 if (result.success) {
                     userProfile = result.userProfile;
-                    // 根據後端回傳的使用者資料來設定 UI
                     setupUI();
                 } else {
                     loader.textContent = `與伺服器同步失敗: ${result.error}`;
@@ -389,20 +345,26 @@
             loader.style.display = 'none';
             mainContainer.style.display = 'block';
 
-            // 檢查使用者是否已填寫過基本資料 (gender, age)
-            if (!userProfile.gender || !userProfile.age) {
-                // 新用戶或資料不完整的用戶
+            // **【關鍵修正】** 判斷條件加入 birthday
+            if (!userProfile.gender || !userProfile.age || !userProfile.birthday) {
                 headerTitle.textContent = '首次註冊';
                 welcomeMessage.textContent = `你好，${userProfile.name}！請先完成基本資料。`;
                 registrationFields.style.display = 'block';
+                surveyForm.querySelector('input[name="name"]').value = userProfile.name;
                 submitBtn.textContent = '註冊並送出問卷';
             } else {
-                // 已註冊用戶
                 headerTitle.textContent = '健康問卷';
                 welcomeMessage.textContent = `你好，${userProfile.name}！請填寫今日問卷。`;
                 registrationFields.style.display = 'none';
                 submitBtn.textContent = '送出問卷';
             }
+        }
+
+        function getCurrentSlot() {
+            const hour = new Date().getHours();
+            if (hour < 13) return "10:00";
+            if (hour < 17) return "13:00";
+            return "17:00";
         }
 
         async function handleFormSubmit(e) {
@@ -424,12 +386,13 @@
                 remark: formData.get('remark')
             };
 
-            // 如果註冊欄位是可見的，就表示是新用戶，需要加入註冊資料
+            // **【關鍵修正】** 完整處理註冊資料
             if (registrationFields.style.display === 'block') {
                 data.name = formData.get('name');
                 data.gender = formData.get('gender');
+                data.birthday = formData.get('birthday');
                 data.age = formData.get('age');
-                if (!data.name || !data.gender || !data.age) {
+                if (!data.name || !data.gender || !data.age || !data.birthday) {
                     showMessage("請填寫所有註冊欄位！", "error");
                     setLoading(false);
                     return;
@@ -446,12 +409,7 @@
                 if (result.success) {
                     showMessage("✓ 提交成功！感謝您的配合。", "success");
                     surveyForm.reset();
-                    // 提交成功後可以考慮關閉 LIFF 視窗
-                    setTimeout(() => {
-                        if (liff.isInClient()) {
-                            liff.closeWindow();
-                        }
-                    }, 2000);
+                    setTimeout(() => { if (liff.isInClient()) { liff.closeWindow(); } }, 2000);
                 } else {
                     showMessage(`✗ 提交失敗：${result.error || '未知錯誤'}`, "error");
                 }
@@ -463,8 +421,26 @@
             }
         }
 
-        // --- Event Listeners ---
-        document.addEventListener('DOMContentLoaded', initializeLiff);
+        // **【關鍵修正】** 新增生日與年齡的連動事件監聽
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeLiff();
+
+            const birthdayInput = surveyForm.querySelector('input[name="birthday"]');
+            const ageInput = document.getElementById('ageInput');
+
+            birthdayInput.addEventListener('change', function () {
+                if (!this.value) return;
+                const birthDate = new Date(this.value);
+                const today = new Date();
+                let age = today.getFullYear() - birthDate.getFullYear();
+                const m = today.getMonth() - birthDate.getMonth();
+                if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                    age--;
+                }
+                ageInput.value = age >= 0 ? age : '';
+            });
+        });
+
         surveyForm.addEventListener('submit', handleFormSubmit);
 
     </script>
