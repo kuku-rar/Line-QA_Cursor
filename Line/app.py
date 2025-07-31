@@ -56,7 +56,7 @@ def init_database():
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
                 """)
 
-                # 建立 surveys 表
+                # 建立 surveys 表 (使用最新的結構定義)
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS surveys (
                         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -70,10 +70,7 @@ def init_database():
                         remark TEXT NULL,
                         submitted_at TIMESTAMP NULL,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                        UNIQUE KEY unique_survey (user_id, survey_date, slot),
-                        INDEX idx_date_slot (survey_date, slot),
-                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
                 """)
 
@@ -102,23 +99,52 @@ def init_database():
                         cursor.execute("ALTER TABLE users ADD COLUMN birthday DATE NULL AFTER gender;")
                         print("✅ 'birthday' 欄位新增完成")
 
-                    # **【最終關鍵修正】** 檢查並遷移 surveys 表
+                    # --- 自動修正/遷移 surveys 表結構 ---
+                    # 遷移 user_id
                     dict_cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'surveys' AND COLUMN_NAME = 'user_id'", (db_name,))
                     if dict_cursor.fetchone()['count'] == 0:
-                        print("⚠️ 'surveys' 表結構過時，正在自動遷移...")
+                        print("⚠️ 'surveys' 表結構過時 (缺少 user_id)，正在自動遷移...")
                         dict_cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'surveys' AND COLUMN_NAME = 'lineId'", (db_name,))
                         if dict_cursor.fetchone()['count'] > 0:
-                            print("   - 步驟 1: 新增 'user_id' 欄位...")
-                            cursor.execute("ALTER TABLE surveys ADD COLUMN user_id INT NULL AFTER slot;")
-                            print("   - 步驟 2: 根據 lineId 填充 'user_id' 的值...")
+                            cursor.execute("ALTER TABLE surveys ADD COLUMN user_id INT NULL AFTER id;")
                             cursor.execute("UPDATE surveys s JOIN users u ON s.lineId = u.lineId SET s.user_id = u.id WHERE s.user_id IS NULL;")
-                            print("   - 步驟 3: 將 'user_id' 欄位設為 NOT NULL...")
                             cursor.execute("ALTER TABLE surveys MODIFY COLUMN user_id INT NOT NULL;")
-                            print("   - 步驟 4: 新增外鍵約束...")
-                            cursor.execute("ALTER TABLE surveys ADD CONSTRAINT fk_surveys_users FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;")
-                            print("✅ 'surveys' 表遷移完成！")
+                            print("✅ 'surveys' 表 user_id 遷移完成！")
+
+                    # 遷移 survey_date
+                    dict_cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'surveys' AND COLUMN_NAME = 'survey_date'", (db_name,))
+                    if dict_cursor.fetchone()['count'] == 0:
+                        print("⚠️ 'surveys' 表中缺少 'survey_date' 欄位，正在嘗試修正...")
+                        dict_cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'surveys' AND COLUMN_NAME = 'date'", (db_name,))
+                        if dict_cursor.fetchone()['count'] > 0:
+                            print("   - 發現舊的 'date' 欄位，正在將其更名為 'survey_date'...")
+                            cursor.execute("ALTER TABLE surveys CHANGE COLUMN `date` survey_date DATE NOT NULL;")
+                            print("✅ 'survey_date' 欄位更名完成。")
                         else:
-                            print("❌ 無法遷移 'surveys' 表：找不到舊的 'lineId' 欄位。")
+                            print("   - 未發現 'date' 欄位，直接新增 'survey_date'...")
+                            cursor.execute("ALTER TABLE surveys ADD COLUMN survey_date DATE NOT NULL AFTER user_id;")
+                            print("✅ 'survey_date' 欄位新增完成。")
+                    
+                    # **【本次新增】** 檢查並修正唯一索引 (UNIQUE KEY)
+                    dict_cursor.execute("SELECT COUNT(*) as count FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'surveys' AND INDEX_NAME = 'unique_survey' AND COLUMN_NAME = 'user_id'", (db_name,))
+                    if dict_cursor.fetchone()['count'] == 0:
+                        print("⚠️ 'surveys' 表的唯一鍵 (unique key) 不正確或不存在，正在修正...")
+                        dict_cursor.execute("SELECT INDEX_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'surveys' AND NON_UNIQUE = 0 AND INDEX_NAME != 'PRIMARY'", (db_name,))
+                        existing_keys = dict_cursor.fetchall()
+                        for key in existing_keys:
+                            print(f"   - 正在移除舊的唯一鍵: {key['INDEX_NAME']}...")
+                            cursor.execute(f"ALTER TABLE surveys DROP INDEX `{key['INDEX_NAME']}`;")
+                        print("   - 正在新增正確的唯一鍵: unique_survey(user_id, survey_date, slot)...")
+                        cursor.execute("ALTER TABLE surveys ADD UNIQUE KEY `unique_survey` (user_id, survey_date, slot);")
+                        print("✅ 'surveys' 表唯一鍵修正完成。")
+
+                    # 最後，確保外鍵存在
+                    dict_cursor.execute("SELECT COUNT(*) as count FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'surveys' AND CONSTRAINT_NAME != 'PRIMARY' AND REFERENCED_TABLE_NAME = 'users'", (db_name,))
+                    if dict_cursor.fetchone()['count'] == 0:
+                        print("⚠️ 'surveys' 表缺少外鍵，正在新增...")
+                        cursor.execute("ALTER TABLE surveys ADD CONSTRAINT fk_surveys_users FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;")
+                        print("✅ 外鍵新增完成。")
+
 
             conn.commit()
             print("✅ 資料庫結構初始化/驗證完成。")
