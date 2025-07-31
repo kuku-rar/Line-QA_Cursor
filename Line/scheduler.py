@@ -96,7 +96,7 @@ if __name__ == "__main__":
     # 新增任務：設定在每天晚上 8 點 (20:00) 執行 remind_users 函式
     scheduler.add_job(
         remind_users,
-        trigger=CronTrigger(hour=20, minute=0),
+        trigger=CronTrigger(hour=21, minute=0),
         id='daily_reminder_job',
         name='Daily survey reminder',
         replace_existing=True
