@@ -285,7 +285,7 @@
 <body>
     <div class="container">
         <!-- 註冊表單區塊 -->
-        <div id="registerSection" style="display:none;">
+        <div id="registerSection">
             <div class="header">
                 <h1>首次註冊</h1>
                 <p>請先完成註冊，才能填寫健康問卷</p>
@@ -322,12 +322,13 @@
             </form>
             <div id="registerMsg"></div>
         </div>
-        <!-- 問卷區塊 -->
+        <!-- 原問卷表單區塊，預設隱藏 -->
         <div id="surveySection" style="display:none;">
             <div class="header">
                 <h1>健康問卷填寫</h1>
-                <p id="welcomeMsg"></p>
+                <p>請協助填寫今日健康狀況</p>
             </div>
+
             <div class="form-container">
                 <form id="surveyForm">
                     <div class="form-group">
@@ -393,6 +394,7 @@
 
                     <button type="submit" class="submit-btn" id="submitBtn">送出問卷</button>
                 </form>
+
                 <div id="msg"></div>
             </div>
         </div>
@@ -401,7 +403,6 @@
     <script>
         let userLineId = null;
         let userLineName = null;
-        let userProfile = null;
 
         function getCurrentSlot() {
             const now = new Date();
@@ -411,34 +412,21 @@
             return "17:00";
         }
 
-        // LIFF 初始化與用戶同步
-        async function initLiffAndSync() {
-            await liff.init({ liffId: "YOUR_LIFF_ID" });
-            if (!liff.isLoggedIn()) {
-                liff.login();
-                return;
-            }
-            const profile = await liff.getProfile();
-            userLineId = profile.userId;
-            userLineName = profile.displayName;
-            // 呼叫 /api/user/sync
-            const res = await fetch("/api/user/sync", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ lineId: userLineId, name: userLineName })
-            });
-            const result = await res.json();
-            if (result.status === 'new') {
-                // 新用戶，顯示註冊表單
+        async function initLiff() {
+            try {
+                await liff.init({ liffId: "2007753950-9NB7ymbm" }); // 請填入你的 LIFF ID
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                    return;
+                }
+                const profile = await liff.getProfile();
+                userLineId = profile.userId;
+                userLineName = profile.displayName;
+                document.getElementById("lineName").textContent = userLineName;
                 document.getElementById("registerSection").style.display = "block";
                 document.getElementById("surveySection").style.display = "none";
-                document.getElementById("lineName").textContent = userLineName;
-            } else if (result.status === 'exist') {
-                // 已存在，顯示問卷與歡迎詞
-                userProfile = result.user;
-                document.getElementById("registerSection").style.display = "none";
-                document.getElementById("surveySection").style.display = "block";
-                document.getElementById("welcomeMsg").textContent = `你好，${userProfile.name || userLineName}`;
+            } catch (error) {
+                console.error('LIFF 初始化失敗:', error);
             }
         }
 
@@ -465,24 +453,22 @@
             }
         }
 
-        document.addEventListener("DOMContentLoaded", () => {
-            initLiffAndSync();
+        document.addEventListener("DOMContentLoaded", async () => {
+            await initLiff();
 
             // 年齡自動計算
             const birthdayInput = document.querySelector('#registerForm input[name="birthday"]');
             const ageInput = document.getElementById('ageInput');
-            if (birthdayInput) {
-                birthdayInput.addEventListener('change', function () {
-                    const birthDate = new Date(this.value);
-                    const today = new Date();
-                    let age = today.getFullYear() - birthDate.getFullYear();
-                    const m = today.getMonth() - birthDate.getMonth();
-                    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-                        age--;
-                    }
-                    ageInput.value = age;
-                });
-            }
+            birthdayInput.addEventListener('change', function () {
+                const birthDate = new Date(this.value);
+                const today = new Date();
+                let age = today.getFullYear() - birthDate.getFullYear();
+                const m = today.getMonth() - birthDate.getMonth();
+                if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                    age--;
+                }
+                ageInput.value = age;
+            });
 
             // 註冊表單送出
             document.getElementById("registerForm").addEventListener("submit", async function (e) {
@@ -490,13 +476,14 @@
                 const form = e.target;
                 const data = {
                     lineId: userLineId,
+                    lineName: userLineName,
                     name: form.name.value,
                     gender: form.gender.value,
                     birthday: form.birthday.value,
                     age: form.age.value
                 };
                 try {
-                    const res = await fetch("/api/user/sync", {
+                    const res = await fetch("/api/user/register", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify(data)
@@ -506,7 +493,6 @@
                         document.getElementById("registerMsg").textContent = "註冊成功，請繼續填寫問卷！";
                         document.getElementById("registerSection").style.display = "none";
                         document.getElementById("surveySection").style.display = "block";
-                        document.getElementById("welcomeMsg").textContent = `你好，${form.name}`;
                     } else {
                         document.getElementById("registerMsg").textContent = "註冊失敗：" + (result.error || "");
                     }
@@ -562,14 +548,12 @@
 
             // 為文字輸入框添加字數提示
             const remarkInput = document.querySelector('input[name="remark"]');
-            if (remarkInput) {
-                remarkInput.addEventListener('input', function () {
-                    const remaining = 20 - this.value.length;
-                    if (remaining < 0) {
-                        this.value = this.value.substring(0, 20);
-                    }
-                });
-            }
+            remarkInput.addEventListener('input', function () {
+                const remaining = 20 - this.value.length;
+                if (remaining < 0) {
+                    this.value = this.value.substring(0, 20);
+                }
+            });
         });
     </script>
 </body>
