@@ -17,7 +17,7 @@ DB_CONFIG = {
     'cursorclass': pymysql.cursors.DictCursor
 }
 # 從環境變數讀取你的 Channel Access Token (需要從 LINE Developers 後台取得)
-LINE_CHANNEL_ACCESS_TOKEN = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN')
+LINE_CHANNEL_ACCESS_TOKEN = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN', 'HVmEY/uPF+fahkzZYmPxA3c82yhwHy9SchF748yA2XWfO7Hj82Qq6qWj0kQSNziJCDDwVgVG5pnSZsnAwYIh0MFBvQ3oU2LktL0djXH51k0e+bud9uEUZyhdQ/w8uCDbDEay9DbIDeKpLGIznhGqBQdB04t89/1O/w1cDnyilFU=')
 LINE_API_URL = 'https://api.line.me/v2/bot/message/push'
 
 def send_reminder_message(user_id, user_name):
