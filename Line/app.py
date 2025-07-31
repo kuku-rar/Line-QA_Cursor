@@ -56,30 +56,6 @@ def init_database():
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
                 """)
 
-                with conn.cursor(pymysql.cursors.DictCursor) as dict_cursor:
-                    # **【關鍵修正】** 檢查並修正 gender 欄位為允許 NULL
-                    dict_cursor.execute("SELECT IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'users' AND COLUMN_NAME = 'gender'", (db_name,))
-                    result = dict_cursor.fetchone()
-                    if result and result['IS_NULLABLE'] == 'NO':
-                        print("⚠️ 'users.gender' 是 NOT NULL, 正在修正為允許 NULL...")
-                        cursor.execute("ALTER TABLE users MODIFY COLUMN gender ENUM('male', 'female', 'other') NULL;")
-                        print("✅ 'users.gender' 欄位修正完成。")
-
-                    # **【關鍵修正】** 檢查並修正 age 欄位為允許 NULL
-                    dict_cursor.execute("SELECT IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'users' AND COLUMN_NAME = 'age'", (db_name,))
-                    result = dict_cursor.fetchone()
-                    if result and result['IS_NULLABLE'] == 'NO':
-                        print("⚠️ 'users.age' 是 NOT NULL, 正在修正為允許 NULL...")
-                        cursor.execute("ALTER TABLE users MODIFY COLUMN age INT NULL;")
-                        print("✅ 'users.age' 欄位修正完成。")
-                    
-                    # 檢查並安全地新增 birthday 欄位
-                    dict_cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'users' AND COLUMN_NAME = 'birthday'", (db_name,))
-                    if dict_cursor.fetchone()['count'] == 0:
-                        print("⚠️ 'users' 表中缺少 'birthday' 欄位，正在新增...")
-                        cursor.execute("ALTER TABLE users ADD COLUMN birthday DATE NULL AFTER gender;")
-                        print("✅ 'birthday' 欄位新增完成")
-
                 # 建立 surveys 表
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS surveys (
@@ -100,7 +76,50 @@ def init_database():
                         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
                 """)
-            
+
+                with conn.cursor(pymysql.cursors.DictCursor) as dict_cursor:
+                    # --- 自動修正 users 表結構 ---
+                    # 修正 gender 欄位為允許 NULL
+                    dict_cursor.execute("SELECT IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'users' AND COLUMN_NAME = 'gender'", (db_name,))
+                    result = dict_cursor.fetchone()
+                    if result and result['IS_NULLABLE'] == 'NO':
+                        print("⚠️ 'users.gender' 是 NOT NULL, 正在修正為允許 NULL...")
+                        cursor.execute("ALTER TABLE users MODIFY COLUMN gender ENUM('male', 'female', 'other') NULL;")
+                        print("✅ 'users.gender' 欄位修正完成。")
+
+                    # 修正 age 欄位為允許 NULL
+                    dict_cursor.execute("SELECT IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'users' AND COLUMN_NAME = 'age'", (db_name,))
+                    result = dict_cursor.fetchone()
+                    if result and result['IS_NULLABLE'] == 'NO':
+                        print("⚠️ 'users.age' 是 NOT NULL, 正在修正為允許 NULL...")
+                        cursor.execute("ALTER TABLE users MODIFY COLUMN age INT NULL;")
+                        print("✅ 'users.age' 欄位修正完成。")
+                    
+                    # 新增 birthday 欄位
+                    dict_cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'users' AND COLUMN_NAME = 'birthday'", (db_name,))
+                    if dict_cursor.fetchone()['count'] == 0:
+                        print("⚠️ 'users' 表中缺少 'birthday' 欄位，正在新增...")
+                        cursor.execute("ALTER TABLE users ADD COLUMN birthday DATE NULL AFTER gender;")
+                        print("✅ 'birthday' 欄位新增完成")
+
+                    # **【最終關鍵修正】** 檢查並遷移 surveys 表
+                    dict_cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'surveys' AND COLUMN_NAME = 'user_id'", (db_name,))
+                    if dict_cursor.fetchone()['count'] == 0:
+                        print("⚠️ 'surveys' 表結構過時，正在自動遷移...")
+                        dict_cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'surveys' AND COLUMN_NAME = 'lineId'", (db_name,))
+                        if dict_cursor.fetchone()['count'] > 0:
+                            print("   - 步驟 1: 新增 'user_id' 欄位...")
+                            cursor.execute("ALTER TABLE surveys ADD COLUMN user_id INT NULL AFTER slot;")
+                            print("   - 步驟 2: 根據 lineId 填充 'user_id' 的值...")
+                            cursor.execute("UPDATE surveys s JOIN users u ON s.lineId = u.lineId SET s.user_id = u.id WHERE s.user_id IS NULL;")
+                            print("   - 步驟 3: 將 'user_id' 欄位設為 NOT NULL...")
+                            cursor.execute("ALTER TABLE surveys MODIFY COLUMN user_id INT NOT NULL;")
+                            print("   - 步驟 4: 新增外鍵約束...")
+                            cursor.execute("ALTER TABLE surveys ADD CONSTRAINT fk_surveys_users FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;")
+                            print("✅ 'surveys' 表遷移完成！")
+                        else:
+                            print("❌ 無法遷移 'surveys' 表：找不到舊的 'lineId' 欄位。")
+
             conn.commit()
             print("✅ 資料庫結構初始化/驗證完成。")
             return
