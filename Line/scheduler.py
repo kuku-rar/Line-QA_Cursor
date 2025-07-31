@@ -93,16 +93,16 @@ if __name__ == "__main__":
     # 設定排程器，並明確指定時區為台北
     scheduler = BlockingScheduler(timezone=ZoneInfo("Asia/Taipei"))
 
-    # 新增任務：設定在每天晚上 8 點 (20:00) 執行 remind_users 函式
+    # 新增任務：設定在每天晚上 9 點 (21:00) 執行 remind_users 函式
     scheduler.add_job(
         remind_users,
-        trigger=CronTrigger(hour=21, minute=0),
+        trigger=CronTrigger(hour=21, minute=30),
         id='daily_reminder_job',
         name='Daily survey reminder',
         replace_existing=True
     )
 
-    print("� 排程提醒服務已啟動，等待觸發時間 (每日 20:00)...")
+    print("🚀 排程提醒服務已啟動，等待觸發時間 (每日 21:00)...")
     
     # 如果您想在服務一啟動時就立刻測試一次，可以取消下面這行的註解
     # remind_users() 
