@@ -3,6 +3,7 @@ import pymysql
 from datetime import date, datetime
 import os
 import time # 引入 time 模組用於等待
+from zoneinfo import ZoneInfo # **【關鍵修正】** 引入時區函式庫
 
 app = Flask(__name__)
 
@@ -245,6 +246,9 @@ def submit_survey():
                     WHERE id = %s
                 """, (data.get('gender'), data.get('age'), data.get('birthday'), user_id))
 
+            # **【關鍵修正】** 使用台北時區來取得當前時間
+            now_in_taipei = datetime.now(ZoneInfo("Asia/Taipei"))
+
             sql_update = """
                 UPDATE surveys
                 SET q1=%s, q2=%s, q3=%s, q4=%s, remark=%s, submitted_at=%s
@@ -252,7 +256,7 @@ def submit_survey():
             """
             affected_rows = cursor.execute(sql_update, (
                 data.get('q1'), data.get('q2'), data.get('q3'), data.get('q4'), 
-                data.get('remark'), datetime.now(), user_id, slot
+                data.get('remark'), now_in_taipei, user_id, slot
             ))
 
             if affected_rows == 0:
