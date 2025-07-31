@@ -76,7 +76,6 @@ def init_database():
 
                 with conn.cursor(pymysql.cursors.DictCursor) as dict_cursor:
                     # --- 自動修正 users 表結構 ---
-                    # 修正 gender 欄位為允許 NULL
                     dict_cursor.execute("SELECT IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'users' AND COLUMN_NAME = 'gender'", (db_name,))
                     result = dict_cursor.fetchone()
                     if result and result['IS_NULLABLE'] == 'NO':
@@ -84,7 +83,6 @@ def init_database():
                         cursor.execute("ALTER TABLE users MODIFY COLUMN gender ENUM('male', 'female', 'other') NULL;")
                         print("✅ 'users.gender' 欄位修正完成。")
 
-                    # 修正 age 欄位為允許 NULL
                     dict_cursor.execute("SELECT IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'users' AND COLUMN_NAME = 'age'", (db_name,))
                     result = dict_cursor.fetchone()
                     if result and result['IS_NULLABLE'] == 'NO':
@@ -92,7 +90,6 @@ def init_database():
                         cursor.execute("ALTER TABLE users MODIFY COLUMN age INT NULL;")
                         print("✅ 'users.age' 欄位修正完成。")
                     
-                    # 新增 birthday 欄位
                     dict_cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'users' AND COLUMN_NAME = 'birthday'", (db_name,))
                     if dict_cursor.fetchone()['count'] == 0:
                         print("⚠️ 'users' 表中缺少 'birthday' 欄位，正在新增...")
@@ -100,7 +97,6 @@ def init_database():
                         print("✅ 'birthday' 欄位新增完成")
 
                     # --- 自動修正/遷移 surveys 表結構 ---
-                    # 遷移 user_id
                     dict_cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'surveys' AND COLUMN_NAME = 'user_id'", (db_name,))
                     if dict_cursor.fetchone()['count'] == 0:
                         print("⚠️ 'surveys' 表結構過時 (缺少 user_id)，正在自動遷移...")
@@ -111,7 +107,6 @@ def init_database():
                             cursor.execute("ALTER TABLE surveys MODIFY COLUMN user_id INT NOT NULL;")
                             print("✅ 'surveys' 表 user_id 遷移完成！")
 
-                    # 遷移 survey_date
                     dict_cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'surveys' AND COLUMN_NAME = 'survey_date'", (db_name,))
                     if dict_cursor.fetchone()['count'] == 0:
                         print("⚠️ 'surveys' 表中缺少 'survey_date' 欄位，正在嘗試修正...")
@@ -125,7 +120,12 @@ def init_database():
                             cursor.execute("ALTER TABLE surveys ADD COLUMN survey_date DATE NOT NULL AFTER user_id;")
                             print("✅ 'survey_date' 欄位新增完成。")
                     
-                    # **【本次新增】** 檢查並修正唯一索引 (UNIQUE KEY)
+                    dict_cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'surveys' AND COLUMN_NAME = 'submitted_at'", (db_name,))
+                    if dict_cursor.fetchone()['count'] == 0:
+                        print("⚠️ 'surveys' 表中缺少 'submitted_at' 欄位，正在新增...")
+                        cursor.execute("ALTER TABLE surveys ADD COLUMN submitted_at TIMESTAMP NULL AFTER remark;")
+                        print("✅ 'submitted_at' 欄位新增完成")
+                    
                     dict_cursor.execute("SELECT COUNT(*) as count FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'surveys' AND INDEX_NAME = 'unique_survey' AND COLUMN_NAME = 'user_id'", (db_name,))
                     if dict_cursor.fetchone()['count'] == 0:
                         print("⚠️ 'surveys' 表的唯一鍵 (unique key) 不正確或不存在，正在修正...")
@@ -138,7 +138,6 @@ def init_database():
                         cursor.execute("ALTER TABLE surveys ADD UNIQUE KEY `unique_survey` (user_id, survey_date, slot);")
                         print("✅ 'surveys' 表唯一鍵修正完成。")
 
-                    # 最後，確保外鍵存在
                     dict_cursor.execute("SELECT COUNT(*) as count FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'surveys' AND CONSTRAINT_NAME != 'PRIMARY' AND REFERENCED_TABLE_NAME = 'users'", (db_name,))
                     if dict_cursor.fetchone()['count'] == 0:
                         print("⚠️ 'surveys' 表缺少外鍵，正在新增...")
