@@ -217,11 +217,13 @@
                 <div id="registrationFields" style="display:none;">
                     <div class="form-group">
                         <label class="question-label">您的姓名</label>
-                        <input type="text" name="name" class="text-input" placeholder="請輸入您的真實姓名" required>
+                        <!-- **【關鍵修正】** 預設移除 required -->
+                        <input type="text" name="name" class="text-input" placeholder="請輸入您的真實姓名">
                     </div>
                     <div class="form-group">
                         <label class="question-label">您的性別</label>
-                        <select name="gender" class="select-input" required>
+                        <!-- **【關鍵修正】** 預設移除 required -->
+                        <select name="gender" class="select-input">
                             <option value="" disabled selected>請選擇性別</option>
                             <option value="male">男</option>
                             <option value="female">女</option>
@@ -230,12 +232,14 @@
                     </div>
                     <div class="form-group">
                         <label class="question-label">您的生日</label>
-                        <input type="date" name="birthday" class="text-input" required>
+                        <!-- **【關鍵修正】** 預設移除 required -->
+                        <input type="date" name="birthday" class="text-input">
                     </div>
                     <div class="form-group">
                         <label class="question-label">您的年齡</label>
+                        <!-- **【關鍵修正】** 預設移除 required -->
                         <input type="number" name="age" id="ageInput" class="text-input" placeholder="選擇生日後將自動計算"
-                            readonly required>
+                            readonly>
                     </div>
                 </div>
 
@@ -345,18 +349,35 @@
             loader.style.display = 'none';
             mainContainer.style.display = 'block';
 
-            // **【關鍵修正】** 判斷條件加入 birthday
+            // **【關鍵修正】** 動態設定 required 屬性
+            const nameInput = surveyForm.querySelector('input[name="name"]');
+            const genderInput = surveyForm.querySelector('select[name="gender"]');
+            const birthdayInput = surveyForm.querySelector('input[name="birthday"]');
+            const ageInput = surveyForm.querySelector('input[name="age"]');
+
             if (!userProfile.gender || !userProfile.age || !userProfile.birthday) {
                 headerTitle.textContent = '首次註冊';
                 welcomeMessage.textContent = `你好，${userProfile.name}！請先完成基本資料。`;
                 registrationFields.style.display = 'block';
-                surveyForm.querySelector('input[name="name"]').value = userProfile.name;
+                nameInput.value = userProfile.name;
                 submitBtn.textContent = '註冊並送出問卷';
+
+                // 只有新用戶才需要必填
+                nameInput.required = true;
+                genderInput.required = true;
+                birthdayInput.required = true;
+                ageInput.required = true;
             } else {
                 headerTitle.textContent = '健康問卷';
                 welcomeMessage.textContent = `你好，${userProfile.name}！請填寫今日問卷。`;
                 registrationFields.style.display = 'none';
                 submitBtn.textContent = '送出問卷';
+
+                // 已註冊用戶則不需要必填
+                nameInput.required = false;
+                genderInput.required = false;
+                birthdayInput.required = false;
+                ageInput.required = false;
             }
         }
 
@@ -386,7 +407,6 @@
                 remark: formData.get('remark')
             };
 
-            // **【關鍵修正】** 完整處理註冊資料
             if (registrationFields.style.display === 'block') {
                 data.name = formData.get('name');
                 data.gender = formData.get('gender');
@@ -399,13 +419,25 @@
                 }
             }
 
+            let response;
             try {
-                const res = await fetch("/api/survey/submit", {
+                console.log("準備送出問卷資料:", JSON.stringify(data, null, 2));
+                response = await fetch("/api/survey/submit", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(data)
                 });
-                const result = await res.json();
+
+                console.log("收到伺服器回應，狀態碼:", response.status);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`伺服器錯誤: ${response.status} - ${errorText}`);
+                }
+
+                const result = await response.json();
+                console.log("伺服器回傳的 JSON:", result);
+
                 if (result.success) {
                     showMessage("✓ 提交成功！感謝您的配合。", "success");
                     surveyForm.reset();
@@ -414,14 +446,17 @@
                     showMessage(`✗ 提交失敗：${result.error || '未知錯誤'}`, "error");
                 }
             } catch (err) {
-                console.error('Submit failed:', err);
-                showMessage("✗ 系統連線錯誤，請稍後再試。", "error");
+                console.error('送出問卷時發生錯誤:', err);
+                if (err.message.includes("JSON")) {
+                    showMessage("✗ 系統錯誤：無法解析伺服器回應。請檢查後端日誌。", "error");
+                } else {
+                    showMessage(`✗ 系統連線錯誤：${err.message}`, "error");
+                }
             } finally {
                 setLoading(false);
             }
         }
 
-        // **【關鍵修正】** 新增生日與年齡的連動事件監聽
         document.addEventListener('DOMContentLoaded', () => {
             initializeLiff();
 
