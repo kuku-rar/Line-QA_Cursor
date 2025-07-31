@@ -13,6 +13,73 @@ DB_CONFIG = {
     'charset': 'utf8mb4'
 }
 
+def init_database():
+    """初始化資料庫和表結構"""
+    try:
+        # 先連接到 MySQL 伺服器（不指定資料庫）
+        conn = pymysql.connect(
+            host=DB_CONFIG['host'],
+            user=DB_CONFIG['user'],
+            password=DB_CONFIG['password'],
+            charset=DB_CONFIG['charset']
+        )
+        
+        with conn.cursor() as cursor:
+            # 建立資料庫（如果不存在）
+            cursor.execute(f"CREATE DATABASE IF NOT EXISTS {DB_CONFIG['database']}")
+            cursor.execute(f"USE {DB_CONFIG['database']}")
+            
+            # 建立 users 表
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    lineId VARCHAR(50) UNIQUE NOT NULL,
+                    name VARCHAR(100) NOT NULL,
+                    gender ENUM('male', 'female', 'other') NOT NULL,
+                    age INT NOT NULL,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """)
+            
+            # 建立 surveys 表
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS surveys (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    date DATE NOT NULL,
+                    slot ENUM('10:00', '13:00', '17:00') NOT NULL,
+                    lineId VARCHAR(50) NOT NULL,
+                    name VARCHAR(100) NOT NULL,
+                    gender ENUM('male', 'female', 'other') NOT NULL,
+                    age INT NOT NULL,
+                    q1 ENUM('V', 'X') NULL,
+                    q2 ENUM('V', 'X') NULL,
+                    q3 ENUM('V', 'X') NULL,
+                    q4 ENUM('V', 'X') NULL,
+                    remark TEXT NULL,
+                    submittedAt TIMESTAMP NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY unique_survey (date, slot, lineId),
+                    INDEX idx_lineId (lineId),
+                    INDEX idx_date_slot (date, slot)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            """)
+            
+        conn.commit()
+        print("✅ 資料庫初始化完成")
+        
+    except Exception as e:
+        print(f"❌ 資料庫初始化失敗: {e}")
+        raise e
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+# 在應用程式啟動時初始化資料庫
+init_database()
+
 @app.route('/survey')
 def survey_page():
     return send_from_directory('.', 'survey.html')

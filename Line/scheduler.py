@@ -5,10 +5,10 @@ from datetime import datetime
 import os
 
 DB_CONFIG = {
-    'host': os.environ.get('DB_HOST', 'localhost'),
-    'user': os.environ.get('DB_USER', 'survey_user'),
-    'password': os.environ.get('DB_PASSWORD', 'P@ssw0rd'),
-    'database': os.environ.get('DB_DATABASE', 'line_survey_db'),
+    'host': os.environ.get('DB_HOST', 'mysql.zeabur.internal'),
+    'user': os.environ.get('DB_USER', 'root'),
+    'password': os.environ.get('DB_PASSWORD', 'JdTHR3vX816u2kU4WmtVZCi90p5rqY7a'),
+    'database': os.environ.get('DB_DATABASE', 'zeabur'),
     'charset': 'utf8mb4'
 }
 
