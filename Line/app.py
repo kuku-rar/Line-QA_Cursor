@@ -21,7 +21,7 @@ def get_db_connection():
     return pymysql.connect(**DB_CONFIG)
 
 def init_database():
-    """初始化資料庫和表結構，並加入重試機制以應對啟動延遲"""
+    """初始化資料庫和表結構，並加入重試機制與自動結構修正"""
     max_retries = 5
     retry_delay = 5  # seconds
 
@@ -31,10 +31,9 @@ def init_database():
             print(f"🚀 [嘗試 {attempt + 1}/{max_retries}] 連線到資料庫...")
             
             db_name = DB_CONFIG['database']
-            # 建立連線時先不指定資料庫，以確保 CREATE DATABASE 能成功
             temp_config = DB_CONFIG.copy()
             temp_config.pop('database')
-            temp_config.pop('cursorclass', None) # 執行 DDL 時不使用 DictCursor
+            temp_config.pop('cursorclass', None)
             conn = pymysql.connect(**temp_config)
 
             with conn.cursor() as cursor:
@@ -57,17 +56,27 @@ def init_database():
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
                 """)
 
-                # 檢查並安全地新增 birthday 欄位
-                # 使用 DictCursor 來檢查，所以需要重新取得 cursor
                 with conn.cursor(pymysql.cursors.DictCursor) as dict_cursor:
-                    dict_cursor.execute("""
-                        SELECT COUNT(*) as count
-                        FROM information_schema.COLUMNS
-                        WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'users' AND COLUMN_NAME = 'birthday'
-                    """, (db_name,))
+                    # **【關鍵修正】** 檢查並修正 gender 欄位為允許 NULL
+                    dict_cursor.execute("SELECT IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'users' AND COLUMN_NAME = 'gender'", (db_name,))
+                    result = dict_cursor.fetchone()
+                    if result and result['IS_NULLABLE'] == 'NO':
+                        print("⚠️ 'users.gender' 是 NOT NULL, 正在修正為允許 NULL...")
+                        cursor.execute("ALTER TABLE users MODIFY COLUMN gender ENUM('male', 'female', 'other') NULL;")
+                        print("✅ 'users.gender' 欄位修正完成。")
+
+                    # **【關鍵修正】** 檢查並修正 age 欄位為允許 NULL
+                    dict_cursor.execute("SELECT IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'users' AND COLUMN_NAME = 'age'", (db_name,))
+                    result = dict_cursor.fetchone()
+                    if result and result['IS_NULLABLE'] == 'NO':
+                        print("⚠️ 'users.age' 是 NOT NULL, 正在修正為允許 NULL...")
+                        cursor.execute("ALTER TABLE users MODIFY COLUMN age INT NULL;")
+                        print("✅ 'users.age' 欄位修正完成。")
+                    
+                    # 檢查並安全地新增 birthday 欄位
+                    dict_cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'users' AND COLUMN_NAME = 'birthday'", (db_name,))
                     if dict_cursor.fetchone()['count'] == 0:
                         print("⚠️ 'users' 表中缺少 'birthday' 欄位，正在新增...")
-                        # 新增欄位時用回普通 cursor
                         cursor.execute("ALTER TABLE users ADD COLUMN birthday DATE NULL AFTER gender;")
                         print("✅ 'birthday' 欄位新增完成")
 
@@ -94,7 +103,7 @@ def init_database():
             
             conn.commit()
             print("✅ 資料庫結構初始化/驗證完成。")
-            return  # 成功後退出函式和迴圈
+            return
 
         except pymysql.err.OperationalError as e:
             print(f"⚠️ 資料庫連線操作失敗: {e}")
@@ -112,14 +121,11 @@ def init_database():
             if conn and conn.open:
                 conn.close()
 
-# 如果所有重試都失敗，Gunicorn 會因為未處理的例外而正確地知道啟動失敗
 init_database()
 
 @app.route('/survey')
 def survey_page():
     return send_from_directory('.', 'survey.html')
-
-# --- 以下的 API 端點維持不變 ---
 
 @app.route('/api/user/sync', methods=['POST'])
 def sync_user():
