@@ -1,0 +1,30 @@
+{
+  "name": "line-health-survey",
+  "description": "LINE健康問卷系統",
+  "services": [
+    {
+      "name": "web",
+      "type": "web",
+      "port": 8080,
+      "environment": {
+        "PORT": "8080",
+        "MYSQL_HOST": "${MYSQL_HOST}",
+        "MYSQL_USER": "${MYSQL_USER}",
+        "MYSQL_PASSWORD": "${MYSQL_PASSWORD}",
+        "MYSQL_DATABASE": "${MYSQL_DATABASE}",
+        "LINE_CHANNEL_ACCESS_TOKEN": "${LINE_CHANNEL_ACCESS_TOKEN}"
+      }
+    },
+    {
+      "name": "scheduler",
+      "type": "worker",
+      "environment": {
+        "MYSQL_HOST": "${MYSQL_HOST}",
+        "MYSQL_USER": "${MYSQL_USER}",
+        "MYSQL_PASSWORD": "${MYSQL_PASSWORD}",
+        "MYSQL_DATABASE": "${MYSQL_DATABASE}",
+        "LINE_CHANNEL_ACCESS_TOKEN": "${LINE_CHANNEL_ACCESS_TOKEN}"
+      }
+    }
+  ]
+}

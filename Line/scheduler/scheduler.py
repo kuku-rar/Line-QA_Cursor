@@ -46,7 +46,7 @@ def send_reminder_message(user_id, user_name):
     }
     
     try:
-        response = requests.post(LINE_API_URL, headers=headers, json=message_body)
+        response = requests.post(LINE_API_URL, headers=headers, json=message_body, timeout=30)
         response.raise_for_status() # 如果請求失敗 (e.g., 4xx or 5xx), 會拋出例外
         print(f"✅ 已成功發送提醒給 {user_name} ({user_id})")
     except requests.exceptions.RequestException as e:
@@ -161,7 +161,8 @@ if __name__ == "__main__":
     print("   - 每日 00:00 自動建立問卷記錄")
     print("   - 每日 20:00 發送提醒訊息")
     
-    # 如果您想在服務一啟動時就立刻測試一次，可以取消下面這行的註解
+    # 在生產環境中，移除立即執行測試，避免啟動時的資料庫負擔
+    # 如果需要測試，可以手動取消下面這行的註解：
     # create_daily_surveys()
     # remind_users() 
 

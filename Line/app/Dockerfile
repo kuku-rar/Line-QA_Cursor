@@ -16,11 +16,16 @@ COPY ../requirements.txt .
 # 安裝 Python 依賴
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 複製排程器主程式
+# 複製應用程式檔案
 COPY . .
+COPY ../survey.html .
+
+# 暴露端口
+EXPOSE 8080
 
 # 設定環境變數
-ENV PYTHONUNBUFFERED=1
+ENV FLASK_APP=app.py
+ENV FLASK_ENV=production
 
 # 啟動命令
-CMD ["python", "scheduler.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "app:app"]

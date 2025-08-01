@@ -1,0 +1,80 @@
+version: "3.8"
+
+services:
+  # MySQL 資料庫服務
+  mysql:
+    image: mysql:8.0
+    container_name: line_survey_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-admin123}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-zeabur}
+      MYSQL_USER: ${MYSQL_USER:-survey_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-admin123}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d
+    networks:
+      - line_survey_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Flask Web 應用服務
+  web:
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+    container_name: line_survey_web
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_USER: ${MYSQL_USER:-root}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-admin123}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-zeabur}
+      LINE_CHANNEL_ACCESS_TOKEN: ${LINE_CHANNEL_ACCESS_TOKEN}
+      PORT: 8080
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - line_survey_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 排程服務
+  scheduler:
+    build:
+      context: .
+      dockerfile: scheduler/Dockerfile
+    container_name: line_survey_scheduler
+    restart: unless-stopped
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_USER: ${MYSQL_USER:-root}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-admin123}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-zeabur}
+      LINE_CHANNEL_ACCESS_TOKEN: ${LINE_CHANNEL_ACCESS_TOKEN}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    networks:
+      - line_survey_network
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  line_survey_network:
+    driver: bridge

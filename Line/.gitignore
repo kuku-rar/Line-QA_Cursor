@@ -1,3 +1,19 @@
 venv/
 commit_message.txt
 Line/commit_message.txt
+
+# Docker 相關檔案
+.env
+docker-compose.override.yml
+mysql_data/
+*.log
+
+# IDE 檔案
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS 檔案
+.DS_Store
+Thumbs.db

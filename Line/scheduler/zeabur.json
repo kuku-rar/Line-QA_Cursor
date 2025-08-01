@@ -1,6 +1,12 @@
 {
-  "cron": {
-    "command": "python3 scheduler.py",
-    "schedule": "0 21 * * *"
+  "name": "line-survey-scheduler",
+  "type": "worker",
+  "command": "python scheduler.py",
+  "environment": {
+    "MYSQL_HOST": "${MYSQL_HOST}",
+    "MYSQL_USER": "${MYSQL_USER}",
+    "MYSQL_PASSWORD": "${MYSQL_PASSWORD}",
+    "MYSQL_DATABASE": "${MYSQL_DATABASE}",
+    "LINE_CHANNEL_ACCESS_TOKEN": "${LINE_CHANNEL_ACCESS_TOKEN}"
   }
 }

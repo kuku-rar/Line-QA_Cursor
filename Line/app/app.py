@@ -265,7 +265,7 @@ def submit_survey():
             ))
 
             if affected_rows == 0:
-                 return jsonify({'success': False, 'error': 'No survey record found to update for today and this slot.'}), 404
+                return jsonify({'success': False, 'error': 'No survey record found to update for today and this slot.'}), 404
 
             conn.commit()
             return jsonify({'success': True, 'message': 'Survey submitted successfully.'})
