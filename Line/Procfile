@@ -1,2 +1,8 @@
-web: gunicorn app:app
-worker: python scheduler.py
+{
+  "build": {
+    "buildpack": "python"
+  },
+  "web": {
+    "command": "gunicorn app:app"
+  }
+}
