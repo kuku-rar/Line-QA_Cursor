@@ -200,7 +200,7 @@ def initialize_app():
 
 @app.route('/survey')
 def survey_page():
-    return send_from_directory('.', 'survey.html')
+    return send_from_directory('../FrontEnd', 'survey.html')
 
 @app.route('/api/user/sync', methods=['POST'])
 def sync_user():
