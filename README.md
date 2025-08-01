@@ -12,16 +12,20 @@
 - **自動預建記錄**：每日 00:00，系統會為所有有效會員自動建立當日的三份空白問卷。
 - **即時填寫更新**：使用者透過 LIFF 頁面提交問卷時，系統會即時更新對應的資料庫記錄。
 - **自動漏填提醒**：每日 20:00，系統會檢查當日問卷是否有缺漏，並透過 LINE Bot 發送一對一提醒訊息。
+- **健康檢查端點**：提供 `/health` 端點供 Zeabur 監控服務狀態。
+- **多服務架構**：分離 Web 服務和排程服務，確保穩定性和可擴展性。
 
 ---
 
 ## 技術棧
 
-- **後端**: Python, Flask
-- **資料庫**: MySQL (使用 `pymysql` 連接)
-- **排程任務**: `apscheduler`
-- **部署伺服器**: `gunicorn`
-- **部署平台**: Zeabur
+- **後端**: Python 3.8+, Flask
+- **資料庫**: MySQL 8.0+ (使用 `pymysql` 連接)
+- **排程任務**: `apscheduler` (支援 Cron 格式)
+- **部署伺服器**: `gunicorn` (WSGI 服務器)
+- **部署平台**: Zeabur (支援多服務部署)
+- **時區處理**: `zoneinfo` (Asia/Taipei)
+- **LINE 整合**: LINE Messaging API, LIFF 2.0
 
 ---
 
@@ -30,38 +34,45 @@
 系統包含 `users` (使用者) 和 `surveys` (問卷記錄) 兩張資料表。
 
 ### `users` Table
+
 儲存已註冊的使用者基本資料。
+
 ```sql
 CREATE TABLE users (
-  lineId      VARCHAR(50) PRIMARY KEY,
-  name        VARCHAR(100) NOT NULL,
-  gender      ENUM('男','女') NOT NULL,
-  age         INT          NOT NULL,
-  is_active   TINYINT(1)   DEFAULT 1,
-  created_at  DATETIME     DEFAULT CURRENT_TIMESTAMP
-);
+  id          INT          PRIMARY KEY AUTO_INCREMENT,
+  lineId      VARCHAR(255) UNIQUE NOT NULL,
+  name        VARCHAR(255) NOT NULL,
+  gender      ENUM('male','female','other') NULL,
+  birthday    DATE         NULL,
+  age         INT          NULL,
+  is_active   BOOLEAN      DEFAULT TRUE,
+  created_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+  updated_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_lineId (lineId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
 ### `surveys` Table
+
 記錄每日各時段的問卷填寫狀況。
+
 ```sql
 CREATE TABLE surveys (
-  id          BIGINT      PRIMARY KEY AUTO_INCREMENT,
-  date        DATE        NOT NULL,
-  slot        ENUM('10:00','13:00','17:00') NOT NULL,
-  lineId      VARCHAR(50) NOT NULL,
-  name        VARCHAR(20) NOT NULL,
-  gender      ENUM('男','女') NOT NULL,
-  age         INT         NOT NULL,
-  q1          CHAR(1),    -- 'V'/'X' or NULL
-  q2          CHAR(1),
-  q3          CHAR(1),
-  q4          CHAR(1),
-  remark      VARCHAR(20),
-  submittedAt DATETIME    DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_survey (date, slot, lineId),
-  FOREIGN KEY (lineId) REFERENCES users(lineId)
-);
+  id           INT         PRIMARY KEY AUTO_INCREMENT,
+  user_id      INT         NOT NULL,
+  survey_date  DATE        NOT NULL,
+  slot         ENUM('10:00','13:00','17:00') NOT NULL,
+  q1           ENUM('V','X') NULL,
+  q2           ENUM('V','X') NULL,
+  q3           ENUM('V','X') NULL,
+  q4           ENUM('V','X') NULL,
+  remark       TEXT        NULL,
+  submitted_at TIMESTAMP   NULL,
+  created_at   TIMESTAMP   DEFAULT CURRENT_TIMESTAMP,
+  updated_at   TIMESTAMP   DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY unique_survey (user_id, survey_date, slot),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
 ---
@@ -69,12 +80,14 @@ CREATE TABLE surveys (
 ## 本地端設定與啟動
 
 1.  **複製專案**
+
     ```bash
-    git clone https://github.com/FelixLin02/Line-QA_Cursor.git
+    git clone https://github.com/kuku_rar/Line-QA_Cursor.git
     cd Line-QA_Cursor/Line
     ```
 
 2.  **建立虛擬環境並安裝依賴**
+
     ```bash
     python -m venv venv
     source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
@@ -82,46 +95,77 @@ CREATE TABLE surveys (
     ```
 
 3.  **設定資料庫**
+
     - 確保您有一個正在運行的 MySQL 伺服器。
     - 建立一個資料庫 (例如 `line_survey_db`)。
     - 建立一個使用者 (例如 `survey_user`) 並授予權限。
-    - 根據上述 `資料庫設計` 建立 `users` 和 `surveys` 資料表。
+    - 系統會自動建立和更新資料表結構，無需手動建立。
 
 4.  **設定環境變數**
-    為了讓程式能連接到資料庫，您需要在本地設定環境變數，或直接修改 `app.py` 和 `scheduler.py` 中的 `DB_CONFIG`。
+    複製環境變數範例檔案並編輯：
+
+    ```bash
+    cp .env.example .env
+    # 編輯 .env 檔案，填入您的資料庫連線資訊和 LINE Channel Access Token
+    ```
 
 5.  **啟動服務**
+
     - **啟動 Web 伺服器**:
       ```bash
+      cd app
       python app.py
       ```
     - **啟動排程器** (開啟另一個終端機):
       ```bash
+      cd scheduler
       python scheduler.py
       ```
+
+6.  **驗證服務**
+    - Web 服務健康檢查: `http://localhost:8080/health`
+    - LIFF 頁面: `http://localhost:8080/survey`
 
 ---
 
 ## Zeabur 部署指南
 
-1.  **推送至 GitHub**:
-    確保所有程式碼 (包含 `Procfile`) 都已推送到您的 GitHub 儲存庫。
+### 快速部署
+
+1.  **推送程式碼**:
+
+    ```bash
+    git add .
+    git commit -m "準備部署到 Zeabur"
+    git push origin main
+    ```
 
 2.  **在 Zeabur 建立專案**:
-    - 登入 Zeabur，建立新專案並連結到您的 GitHub 儲存庫。
-    - Zeabur 會自動偵測 `Procfile` 並建立 `web` 和 `worker` 兩個服務。
 
-3.  **設定環境變數**:
-    在 Zeabur 專案的 "Variables" 頁面，新增以下環境變數：
-    - `DB_HOST`: 您的資料庫主機位址
-    - `DB_USER`: 資料庫使用者名稱
-    - `DB_PASSWORD`: 資料庫密碼
-    - `DB_DATABASE`: 資料庫名稱
-    - `LINE_CHANNEL_ACCESS_TOKEN`: 您的 LINE Channel Access Token
+    - 登入 [Zeabur](https://zeabur.com)
+    - 建立新專案並連結 GitHub 儲存庫
+    - Zeabur 會自動偵測 `Procfile` 並建立 `web` 和 `worker` 服務
 
-4.  **取得 LIFF 連結**:
-    - 部署完成後，Zeabur 會為您的 `web` 服務提供一個公開網址 (例如: `https://your-project.zeabur.app`)。
-    - 您的 LIFF URL 為: **`https://<您的 Zeabur 網址>/survey`**
+3.  **新增 MySQL 服務**:
+
+    - 在專案中新增 MySQL 服務
+    - 等待服務啟動完成
+
+4.  **設定環境變數**:
+
+    ```bash
+    # 必要環境變數
+    MYSQL_HOST=mysql.zeabur.internal
+    MYSQL_USER=root
+    MYSQL_PASSWORD=<您的資料庫密碼>
+    MYSQL_DATABASE=zeabur
+    LINE_CHANNEL_ACCESS_TOKEN=<您的 LINE Channel Access Token>
+    ```
 
 5.  **設定 LINE LIFF**:
-    前往 LINE Developers Console，將上述 URL 填入 LIFF App 的 "Endpoint URL" 欄位。
+    - LIFF URL: `https://<your-project>.zeabur.app/survey`
+    - 健康檢查: `https://<your-project>.zeabur.app/health`
+
+### 詳細部署指南
+
+請參閱 [DEPLOYMENT.md](Line/DEPLOYMENT.md) 獲取完整的部署說明、故障排除和驗證方法。

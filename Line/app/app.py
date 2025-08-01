@@ -17,6 +17,11 @@ DB_CONFIG = {
     'cursorclass': pymysql.cursors.DictCursor
 }
 
+# LINE Bot 設定
+LINE_CHANNEL_ACCESS_TOKEN = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN')
+if not LINE_CHANNEL_ACCESS_TOKEN:
+    print("⚠️ 警告: 未設定 LINE_CHANNEL_ACCESS_TOKEN 環境變數")
+
 def get_db_connection():
     """建立並回傳資料庫連線"""
     return pymysql.connect(**DB_CONFIG)
@@ -274,6 +279,19 @@ def submit_survey():
     finally:
         if conn:
             conn.close()
+
+@app.route('/health')
+def health_check():
+    """健康檢查端點，供 Zeabur 監控服務狀態"""
+    try:
+        # 測試資料庫連線
+        conn = get_db_connection()
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        conn.close()
+        return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()}), 200
+    except Exception as e:
+        return jsonify({'status': 'unhealthy', 'error': str(e), 'timestamp': datetime.now().isoformat()}), 503
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))

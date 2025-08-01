@@ -17,7 +17,10 @@ DB_CONFIG = {
     'cursorclass': pymysql.cursors.DictCursor
 }
 # 從環境變數讀取你的 Channel Access Token (需要從 LINE Developers 後台取得)
-LINE_CHANNEL_ACCESS_TOKEN = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN', 'HVmEY/uPF+fahkzZYmPxA3c82yhwHy9SchF748yA2XWfO7Hj82Qq6qWj0kQSNziJCDDwVgVG5pnSZsnAwYIh0MFBvQ3oU2LktL0djXH51k0e+bud9uEUZyhdQ/w8uCDbDEay9DbIDeKpLGIznhGqBQdB04t89/1O/w1cDnyilFU=')
+LINE_CHANNEL_ACCESS_TOKEN = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN')
+if not LINE_CHANNEL_ACCESS_TOKEN:
+    print("❌ 錯誤: 未設定 LINE_CHANNEL_ACCESS_TOKEN 環境變數，排程器無法發送提醒訊息")
+    exit(1)
 LINE_API_URL = 'https://api.line.me/v2/bot/message/push'
 
 def send_reminder_message(user_id, user_name):
@@ -51,6 +54,49 @@ def send_reminder_message(user_id, user_name):
         # 印出 LINE API 回傳的錯誤訊息，方便除錯
         if e.response is not None:
             print(f"   - 回應內容: {e.response.text}")
+
+def create_daily_surveys():
+    """每日午夜自動為所有活躍用戶建立當日的三份空白問卷"""
+    print(f"🌅 {datetime.now(ZoneInfo('Asia/Taipei'))} - 開始執行每日問卷建立任務...")
+    conn = None
+    try:
+        conn = pymysql.connect(**DB_CONFIG)
+        with conn.cursor() as cursor:
+            # 取得所有活躍用戶
+            cursor.execute("SELECT id FROM users WHERE is_active = 1")
+            active_users = cursor.fetchall()
+            
+            if not active_users:
+                print("ℹ️ 沒有活躍用戶，跳過問卷建立。")
+                return
+            
+            slots = ['10:00', '13:00', '17:00']
+            total_created = 0
+            
+            for user in active_users:
+                user_id = user['id']
+                for slot in slots:
+                    try:
+                        cursor.execute("""
+                            INSERT IGNORE INTO surveys (user_id, survey_date, slot) 
+                            VALUES (%s, CURDATE(), %s)
+                        """, (user_id, slot))
+                        if cursor.rowcount > 0:
+                            total_created += 1
+                    except pymysql.MySQLError as e:
+                        print(f"⚠️ 為用戶 {user_id} 建立 {slot} 問卷時發生錯誤: {e}")
+            
+            conn.commit()
+            print(f"✅ 成功為 {len(active_users)} 位用戶建立 {total_created} 份問卷記錄。")
+            
+    except pymysql.MySQLError as e:
+        print(f"❌ 執行問卷建立任務時發生資料庫錯誤: {e}")
+    except Exception as e:
+        print(f"❌ 執行問卷建立任務時發生未預期錯誤: {e}")
+    finally:
+        if conn:
+            conn.close()
+        print("✅ 每日問卷建立任務執行完畢。")
 
 def remind_users():
     """找出所有未完成當日問卷的使用者，並呼叫發送函式"""
@@ -93,21 +139,33 @@ if __name__ == "__main__":
     # 設定排程器，並明確指定時區為台北
     scheduler = BlockingScheduler(timezone=ZoneInfo("Asia/Taipei"))
 
-    # 新增任務：設定在每天晚上 9 點 (21:00) 執行 remind_users 函式
+    # 新增任務1：每日午夜建立問卷記錄
+    scheduler.add_job(
+        create_daily_surveys,
+        trigger=CronTrigger(hour=0, minute=0),
+        id='daily_survey_creation_job',
+        name='Daily survey creation',
+        replace_existing=True
+    )
+
+    # 新增任務2：每日晚上提醒未完成的用戶
     scheduler.add_job(
         remind_users,
-        trigger=CronTrigger(hour=22, minute=00),
+        trigger=CronTrigger(hour=20, minute=0),
         id='daily_reminder_job',
         name='Daily survey reminder',
         replace_existing=True
     )
 
-    print("🚀 排程提醒服務已啟動，等待觸發時間 (每日 21:00)...")
+    print("🚀 排程服務已啟動:")
+    print("   - 每日 00:00 自動建立問卷記錄")
+    print("   - 每日 20:00 發送提醒訊息")
     
     # 如果您想在服務一啟動時就立刻測試一次，可以取消下面這行的註解
+    # create_daily_surveys()
     # remind_users() 
 
     try:
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):
-        print("🛑 排程提醒服務已停止。")
+        print("🛑 排程服務已停止。")
