@@ -1,8 +1,0 @@
-{
-  "build": {
-    "buildpack": "python"
-  },
-  "web": {
-    "command": "gunicorn app:app"
-  }
-}
