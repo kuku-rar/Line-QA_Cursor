@@ -9,9 +9,10 @@ app = Flask(__name__)
 
 # --- 資料庫設定 ---
 DB_CONFIG = {
-    'host': os.environ.get('MYSQL_HOST', 'mysql.zeabur.internal'),
+    'host': os.environ.get('MYSQL_HOST', 'tpe1.clusters.zeabur.com'),
+    'port': int(os.environ.get('MYSQL_PORT', '30982')),
     'user': os.environ.get('MYSQL_USER', 'root'),
-    'password': os.environ.get('MYSQL_PASSWORD'),
+    'password': os.environ.get('MYSQL_PASSWORD', 'MT2zP4VbW1nlIc7tLy89U6q35C0Hfoi'),
     'database': os.environ.get('MYSQL_DATABASE', 'zeabur'),
     'charset': 'utf8mb4',
     'cursorclass': pymysql.cursors.DictCursor
