@@ -21,6 +21,7 @@ DB_CONFIG = {
 LINE_CHANNEL_ACCESS_TOKEN = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN')
 if not LINE_CHANNEL_ACCESS_TOKEN:
     print("⚠️ 警告: 未設定 LINE_CHANNEL_ACCESS_TOKEN 環境變數")
+    print("💡 應用仍可啟動，但 LINE Bot 功能將無法使用")
 
 def get_db_connection():
     """建立並回傳資料庫連線"""
@@ -28,6 +29,11 @@ def get_db_connection():
 
 def init_database():
     """初始化資料庫和表結構，並加入重試機制與自動結構修正"""
+    # 檢查必要的環境變數
+    if not DB_CONFIG['password']:
+        print("⚠️ 警告: MYSQL_PASSWORD 環境變數未設定，跳過資料庫初始化")
+        return
+        
     max_retries = 5
     retry_delay = 5  # seconds
 
@@ -171,7 +177,25 @@ def init_database():
             if conn and conn.open:
                 conn.close()
 
-init_database()
+# 移動資料庫初始化到應用啟動後執行，避免載入時失敗
+# init_database()  # 將延遲到第一個請求時執行
+
+# 初始化標誌
+_initialized = False
+
+@app.before_request
+def initialize_app():
+    """在第一個請求前初始化資料庫 (只執行一次)"""
+    global _initialized
+    if not _initialized:
+        try:
+            init_database()
+            print("✅ 資料庫初始化成功")
+        except Exception as e:
+            print(f"⚠️ 資料庫初始化失敗: {e}")
+            print("💡 應用仍會啟動，請檢查環境變數和資料庫連線")
+        finally:
+            _initialized = True
 
 @app.route('/survey')
 def survey_page():
@@ -284,14 +308,30 @@ def submit_survey():
 def health_check():
     """健康檢查端點，供 Zeabur 監控服務狀態"""
     try:
+        # 檢查必要的環境變數
+        if not DB_CONFIG['password']:
+            return jsonify({
+                'status': 'unhealthy', 
+                'error': 'Missing MYSQL_PASSWORD environment variable',
+                'timestamp': datetime.now().isoformat()
+            }), 503
+            
         # 測試資料庫連線
         conn = get_db_connection()
         with conn.cursor() as cursor:
             cursor.execute("SELECT 1")
         conn.close()
-        return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()}), 200
+        return jsonify({
+            'status': 'healthy', 
+            'database': 'connected',
+            'timestamp': datetime.now().isoformat()
+        }), 200
     except Exception as e:
-        return jsonify({'status': 'unhealthy', 'error': str(e), 'timestamp': datetime.now().isoformat()}), 503
+        return jsonify({
+            'status': 'unhealthy', 
+            'error': str(e), 
+            'timestamp': datetime.now().isoformat()
+        }), 503
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
